@@ -169,6 +169,29 @@ body {
 
 .note-text { font-size:10px; color:var(--faded); text-align:center; margin-top:10px; letter-spacing:0.5px; }
 
+/* ===== DOB INPUT ===== */
+.dob-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dob-input {
+  flex: 1;
+  text-align: center;
+  padding: 9px 4px;
+  min-width: 0;
+}
+.dob-input::-webkit-inner-spin-button,
+.dob-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.dob-input[placeholder="1990"] { flex: 2; }
+.dob-sep {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 13px;
+  color: var(--faded);
+  flex-shrink: 0;
+  padding-bottom: 2px;
+}
+
 /* ===== PROFILE BAR ===== */
 .profile-bar {
   display: flex;
@@ -534,9 +557,16 @@ body {
       <input type="text" id="nameInput" class="form-input" placeholder="山田 太郎">
     </div>
     <div class="form-row">
-      <div class="form-section">
+      <div class="form-section" style="grid-column:1/-1;">
         <label class="form-label">生年月日 <span class="req">*</span></label>
-        <input type="date" id="dobInput" class="form-input">
+        <div class="dob-row">
+          <input type="number" id="dobYear" class="form-input dob-input" placeholder="1990" min="1900" max="2099" inputmode="numeric">
+          <span class="dob-sep">年</span>
+          <input type="number" id="dobMonth" class="form-input dob-input" placeholder="5" min="1" max="12" inputmode="numeric">
+          <span class="dob-sep">月</span>
+          <input type="number" id="dobDay" class="form-input dob-input" placeholder="3" min="1" max="31" inputmode="numeric">
+          <span class="dob-sep">日</span>
+        </div>
       </div>
       <div class="form-section">
         <label class="form-label">血液型</label>
@@ -917,6 +947,14 @@ function todayKey() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function getDobValue() {
+  const y = document.getElementById('dobYear').value.trim();
+  const m = document.getElementById('dobMonth').value.trim();
+  const d = document.getElementById('dobDay').value.trim();
+  if (!y || !m || !d) return '';
+  return y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -927,10 +965,11 @@ function showToast(msg) {
 // ===== DIAGNOSIS =====
 async function startDiagnosis() {
   const name  = document.getElementById('nameInput').value.trim();
-  const dob   = document.getElementById('dobInput').value;
+  const dob   = getDobValue();
   const blood = document.getElementById('bloodInput').value;
   const worry = document.getElementById('worryInput').value.trim();
   if (!name) { showToast('お名前を入力してください'); return; }
+  if (!dob) { showToast('生年月日を入力してください'); return; }
 
   document.getElementById('diagnoseBtn').disabled = true;
   // プロフィールを保存
@@ -1117,7 +1156,12 @@ function editProfile() {
   // プロフィール編集：初回フォームに現在値を入れて表示
   if (userProfile) {
     document.getElementById('nameInput').value = userProfile.name || '';
-    document.getElementById('dobInput').value  = userProfile.dob  || '';
+    if (userProfile.dob) {
+      const parts = userProfile.dob.split('-');
+      document.getElementById('dobYear').value  = parts[0] || '';
+      document.getElementById('dobMonth').value = parseInt(parts[1]) || '';
+      document.getElementById('dobDay').value   = parseInt(parts[2]) || '';
+    }
     document.getElementById('bloodInput').value = userProfile.blood || '';
   }
   showInnerScreen('intakeScreen');
@@ -1283,7 +1327,7 @@ function shareNative() {
 }
 
 // ===== INIT =====
-document.getElementById('dobInput').max = new Date().toISOString().split('T')[0];
+
 
 (async () => {
   await loadRecords();
