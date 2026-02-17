@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日の処方箋</title>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #F5F0E8;
+  --paper: #EDE8DC;
+  --ink: #1C1A17;
+  --ink-light: #3D3A34;
+  --red: #B5382A;
+  --stamp-blue: #2A4B7C;
+  --gold: #9A7B3C;
+  --faded: #8C8479;
+  --line: rgba(28,26,23,0.12);
+  --green: #2D6A4F;
+  --green-bg: rgba(45,106,79,0.08);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: #C8C2B0;
+  min-height: 100vh;
+  font-family: 'Noto Sans JP', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 60px;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,0.025) 39px, rgba(0,0,0,0.025) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.01) 39px, rgba(0,0,0,0.01) 40px);
+}
+
+/* ===== SCREENS ===== */
+.screen { display:none; width:100%; max-width:480px; }
+.screen.active { display:block; animation: slideUp 0.45s cubic-bezier(0.16,1,0.3,1); }
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ===== NAV TABS ===== */
+.nav-tabs {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  max-width: 480px;
+  margin-bottom: 24px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 2px;
+  padding: 3px;
+}
+.nav-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 9px 8px;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(245,240,232,0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 1px;
+}
+.nav-tab.active {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+/* ===== HEADER ===== */
+.app-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.app-header .clinic-name {
+  font-family: 'IM Fell English', serif;
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: rgba(245,240,232,0.5);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.app-header h1 {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: 6px;
+}
+
+/* ===== CARD BASE ===== */
+.card {
+  background: var(--cream);
+  border: 1px solid rgba(28,26,23,0.15);
+  box-shadow: 3px 3px 0 rgba(28,26,23,0.06), 6px 6px 0 rgba(28,26,23,0.03);
+  position: relative;
+}
+
+.corner-mark {
+  position: absolute;
+  width: 16px; height: 16px;
+  border-color: rgba(28,26,23,0.15);
+  border-style: solid;
+}
+.corner-mark.tl { top:7px; left:7px; border-width:1px 0 0 1px; }
+.corner-mark.tr { top:7px; right:7px; border-width:1px 1px 0 0; }
+.corner-mark.bl { bottom:7px; left:7px; border-width:0 0 1px 1px; }
+.corner-mark.br { bottom:7px; right:7px; border-width:0 1px 1px 0; }
+
+/* ===== INTAKE FORM ===== */
+.intake-card { padding:28px 24px; }
+.intake-card::after {
+  content:'問診票';
+  font-family:'Shippori Mincho',serif;
+  font-size:9px; letter-spacing:3px; color:var(--faded);
+  position:absolute; top:14px; right:18px;
+}
+
+.form-section { margin-bottom:20px; }
+.form-label {
+  font-family:'Shippori Mincho',serif;
+  font-size:11px; letter-spacing:2px; color:var(--faded);
+  display:block; margin-bottom:7px;
+}
+.form-label .req { color:var(--red); margin-left:3px; }
+
+.form-input, .form-select, .form-textarea {
+  width:100%; background:var(--paper);
+  border:none; border-bottom:1.5px solid rgba(28,26,23,0.2);
+  padding:9px 4px;
+  font-family:'Noto Sans JP',sans-serif; font-size:14px; color:var(--ink);
+  outline:none; transition:border-color 0.2s; -webkit-appearance:none; appearance:none;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-bottom-color:var(--ink); }
+.form-select {
+  cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231C1A17' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 6px center; padding-right:28px;
+}
+.form-textarea { resize:none; height:72px; line-height:1.7; border:1.5px solid rgba(28,26,23,0.2); padding:9px; font-size:13px; }
+
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+.mood-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-top:4px; }
+.mood-btn {
+  background:var(--paper); border:1.5px solid transparent;
+  padding:9px 4px 7px; cursor:pointer; text-align:center; transition:all 0.15s;
+}
+.mood-btn .emoji { font-size:18px; display:block; margin-bottom:2px; }
+.mood-btn .label { font-size:8px; color:var(--faded); letter-spacing:0.5px; display:block; }
+.mood-btn:hover { border-color:rgba(28,26,23,0.25); }
+.mood-btn.selected { border-color:var(--ink); background:var(--ink); }
+.mood-btn.selected .label { color:var(--cream); }
+
+.btn-primary {
+  background:var(--ink); color:var(--cream); border:none;
+  padding:13px 40px;
+  font-family:'Shippori Mincho',serif; font-size:14px; letter-spacing:4px;
+  cursor:pointer; transition:all 0.2s; width:100%; margin-top:24px;
+}
+.btn-primary:hover { opacity:0.88; }
+.btn-primary:active { transform:translateY(1px); }
+.btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+
+.note-text { font-size:10px; color:var(--faded); text-align:center; margin-top:10px; letter-spacing:0.5px; }
+
+/* ===== PROFILE BAR ===== */
+.profile-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--ink);
+  padding: 14px 16px;
+  margin: -28px -24px 0;
+}
+.profile-bar-info { display:flex; flex-direction:column; gap:3px; }
+.profile-name {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 15px; font-weight: 600;
+  color: var(--cream); letter-spacing: 2px;
+}
+.profile-sub {
+  font-size: 10px; color: rgba(245,240,232,0.5);
+  letter-spacing: 1px; font-family: 'IM Fell English', serif;
+}
+.profile-edit-btn {
+  background: transparent;
+  border: 1px solid rgba(245,240,232,0.2);
+  color: rgba(245,240,232,0.6);
+  padding: 5px 12px;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 10px; letter-spacing: 2px;
+  cursor: pointer; transition: all 0.15s;
+}
+.profile-edit-btn:hover {
+  border-color: rgba(245,240,232,0.5);
+  color: var(--cream);
+}
+
+/* ===== LOADING ===== */
+#loadingScreen { text-align:center; padding:80px 20px; }
+.loading-mortar { font-size:44px; margin-bottom:20px; display:inline-block; animation:grind 2s ease-in-out infinite; }
+@keyframes grind {
+  0%,100% { transform:rotate(-6deg); }
+  50%      { transform:rotate(6deg); }
+}
+.loading-text { font-family:'Shippori Mincho',serif; font-size:13px; letter-spacing:4px; color:var(--cream); margin-bottom:6px; }
+.loading-sub  { font-size:10px; color:rgba(245,240,232,0.5); letter-spacing:1px; margin-bottom:20px; }
+.loading-dots span { display:inline-block; width:5px; height:5px; background:var(--cream); border-radius:50%; margin:0 3px; animation:pulse 1.2s ease-in-out infinite; }
+.loading-dots span:nth-child(2) { animation-delay:0.2s; }
+.loading-dots span:nth-child(3) { animation-delay:0.4s; }
+@keyframes pulse { 0%,80%,100%{transform:scale(0.5);opacity:0.2;} 40%{transform:scale(1);opacity:1;} }
+
+/* ===== PRESCRIPTION ===== */
+.rx-topstrip {
+  background:var(--ink); padding:12px 24px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.rx-topstrip .facility { font-family:'IM Fell English',serif; font-size:10px; letter-spacing:3px; color:rgba(245,240,232,0.5); }
+.rx-topstrip .rx-symbol { font-family:'IM Fell English',serif; font-size:20px; color:var(--cream); font-style:italic; }
+
+.rx-header { padding:20px 24px 16px; border-bottom:1px solid var(--line); }
+.rx-title { font-family:'Shippori Mincho',serif; font-size:20px; font-weight:700; color:var(--ink); letter-spacing:5px; margin-bottom:14px; }
+.rx-meta { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.rx-meta-item label { font-size:8px; letter-spacing:2px; color:var(--faded); display:block; margin-bottom:2px; font-family:'Shippori Mincho',serif; }
+.rx-meta-item .value { font-family:'Shippori Mincho',serif; font-size:12px; color:var(--ink); letter-spacing:1px; }
+
+.rx-diagnosis { padding:16px 24px; border-bottom:1px solid var(--line); background:rgba(181,56,42,0.04); }
+.rx-diagnosis label { font-size:8px; letter-spacing:3px; color:var(--red); font-family:'IM Fell English',serif; display:block; margin-bottom:5px; }
+.rx-diagnosis .diagnosis-text { font-family:'Shippori Mincho',serif; font-size:15px; font-weight:600; color:var(--red); letter-spacing:2px; }
+
+.rx-body { padding:20px 24px; }
+
+.rx-drug { margin-bottom:20px; padding-bottom:20px; border-bottom:1px dashed var(--line); }
+.drug-number { font-family:'IM Fell English',serif; font-size:10px; color:var(--faded); letter-spacing:2px; margin-bottom:6px; }
+.drug-name { font-family:'Shippori Mincho',serif; font-size:18px; font-weight:700; color:var(--ink); letter-spacing:3px; margin-bottom:6px; }
+.drug-name .reading { font-size:9px; color:var(--faded); font-weight:400; letter-spacing:2px; display:block; margin-top:2px; }
+.drug-rows { display:flex; flex-direction:column; gap:7px; margin-top:10px; }
+.drug-row { display:flex; gap:10px; align-items:flex-start; }
+.drug-row label { font-size:9px; letter-spacing:2px; color:var(--faded); font-family:'Shippori Mincho',serif; min-width:32px; padding-top:1px; }
+.drug-row .text { font-size:12px; color:var(--ink-light); line-height:1.65; flex:1; }
+
+/* ===== CHECK SECTION ===== */
+.rx-check { margin-bottom:20px; }
+.rx-check-label {
+  font-family:'IM Fell English',serif;
+  font-size:9px; letter-spacing:3px; color:var(--faded);
+  display:block; margin-bottom:12px;
+}
+
+.check-items { display:flex; flex-direction:column; gap:8px; }
+
+.check-item {
+  display:flex; align-items:flex-start; gap:12px;
+  background:var(--paper); padding:14px 16px;
+  border:1.5px solid transparent; cursor:pointer;
+  transition:all 0.2s; position:relative; overflow:hidden;
+}
+.check-item:hover { border-color:rgba(28,26,23,0.2); }
+.check-item.done {
+  background:var(--green-bg);
+  border-color:rgba(45,106,79,0.3);
+}
+
+.check-box {
+  width:20px; height:20px; flex-shrink:0;
+  border:1.5px solid rgba(28,26,23,0.3);
+  display:flex; align-items:center; justify-content:center;
+  margin-top:1px; transition:all 0.2s;
+}
+.check-item.done .check-box {
+  background:var(--green); border-color:var(--green);
+}
+.check-box svg { display:none; }
+.check-item.done .check-box svg { display:block; }
+
+.check-content { flex:1; }
+.check-title {
+  font-family:'Shippori Mincho',serif;
+  font-size:14px; color:var(--ink); letter-spacing:1px;
+  margin-bottom:4px; line-height:1.4;
+  transition:color 0.2s;
+}
+.check-item.done .check-title { color:var(--green); }
+.check-why {
+  font-size:10px; color:var(--faded); line-height:1.6; letter-spacing:0.3px;
+}
+
+.check-done-stamp {
+  position:absolute; right:14px; top:50%; transform:translateY(-50%) rotate(8deg);
+  font-family:'Shippori Mincho',serif; font-size:10px; letter-spacing:2px;
+  color:var(--green); border:1.5px solid var(--green); padding:2px 8px;
+  opacity:0; transition:opacity 0.3s;
+}
+.check-item.done .check-done-stamp { opacity:0.7; }
+
+/* ===== LUCKY ITEMS ===== */
+.rx-lucky { margin-bottom:0; }
+.rx-lucky label { font-size:9px; letter-spacing:3px; color:var(--faded); font-family:'IM Fell English',serif; display:block; margin-bottom:10px; }
+.lucky-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+.lucky-item { background:var(--paper); padding:11px 8px; text-align:center; border:1px solid var(--line); }
+.lucky-item .lucky-icon { font-size:16px; display:block; margin-bottom:3px; }
+.lucky-item .lucky-color-swatch {
+  display: block;
+  width: 100%;
+  height: 28px;
+  margin-bottom: 6px;
+  border-radius: 1px;
+  background: #ccc;
+  position: relative;
+  overflow: hidden;
+}
+.lucky-item .lucky-color-swatch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+}
+.lucky-item .lucky-type { font-size:7px; letter-spacing:2px; color:var(--faded); display:block; margin-bottom:2px; font-family:'IM Fell English',serif; }
+.lucky-item .lucky-value { font-family:'Shippori Mincho',serif; font-size:11px; color:var(--ink); letter-spacing:1px; }
+
+/* ===== FOOTER ===== */
+.rx-footer {
+  padding:16px 24px 20px;
+  border-top:1px solid var(--line);
+  display:flex; justify-content:space-between; align-items:flex-end;
+}
+.rx-footer .valid { font-size:9px; color:var(--faded); letter-spacing:1px; }
+.rx-stamp {
+  width:56px; height:56px; border:2px solid var(--stamp-blue); border-radius:50%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  opacity:0.6; transform:rotate(-12deg);
+}
+.rx-stamp .stamp-text { font-family:'IM Fell English',serif; font-size:7px; letter-spacing:1px; color:var(--stamp-blue); line-height:1.4; text-align:center; }
+
+/* ===== ACTION BUTTONS ===== */
+.action-bar {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  margin-top:16px;
+}
+.btn-share {
+  background:var(--ink); color:var(--cream); border:none;
+  padding:12px 16px;
+  font-family:'Shippori Mincho',serif; font-size:11px; letter-spacing:3px;
+  cursor:pointer; transition:all 0.2s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-share:hover { opacity:0.85; }
+.btn-secondary {
+  background:transparent; color:var(--ink);
+  border:1.5px solid rgba(28,26,23,0.3);
+  padding:12px 16px;
+  font-family:'Shippori Mincho',serif; font-size:11px; letter-spacing:3px;
+  cursor:pointer; transition:all 0.2s;
+}
+.btn-secondary:hover { background:rgba(28,26,23,0.05); }
+
+/* ===== RECORDS TAB ===== */
+.records-header {
+  padding:24px 24px 0;
+}
+.records-header h2 {
+  font-family:'Shippori Mincho',serif;
+  font-size:16px; font-weight:700; color:var(--ink); letter-spacing:4px;
+  margin-bottom:16px;
+}
+
+.stats-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px; }
+.stat-box { background:var(--paper); padding:14px 10px; text-align:center; border:1px solid var(--line); }
+.stat-num { font-family:'Shippori Mincho',serif; font-size:26px; color:var(--ink); font-weight:700; display:block; }
+.stat-label { font-size:8px; letter-spacing:2px; color:var(--faded); display:block; margin-top:2px; font-family:'IM Fell English',serif; }
+
+.streak-bar {
+  background:var(--ink); padding:12px 16px; margin-bottom:20px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.streak-bar .streak-text { font-family:'Shippori Mincho',serif; font-size:12px; color:var(--cream); letter-spacing:2px; }
+.streak-bar .streak-num { font-family:'Shippori Mincho',serif; font-size:20px; color:var(--cream); font-weight:700; }
+
+.records-list { padding:0 24px 24px; }
+.records-list h3 {
+  font-family:'IM Fell English',serif;
+  font-size:9px; letter-spacing:3px; color:var(--faded);
+  margin-bottom:12px; margin-top:4px;
+}
+
+.record-item {
+  border-bottom:1px solid var(--line); padding:14px 0;
+  display:flex; gap:14px; align-items:flex-start;
+}
+.record-item:last-child { border-bottom:none; }
+
+.record-date-col { min-width:48px; text-align:center; padding-top:2px; }
+.record-date-col .month { font-size:9px; color:var(--faded); letter-spacing:1px; display:block; font-family:'IM Fell English',serif; }
+.record-date-col .day { font-family:'Shippori Mincho',serif; font-size:20px; color:var(--ink); font-weight:700; line-height:1; }
+
+.record-content { flex:1; }
+.record-diagnosis { font-family:'Shippori Mincho',serif; font-size:11px; color:var(--red); letter-spacing:1px; margin-bottom:4px; }
+.record-action { font-size:12px; color:var(--ink-light); line-height:1.5; margin-bottom:6px; }
+.record-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.badge {
+  font-size:8px; letter-spacing:1px; padding:2px 7px;
+  border:1px solid; font-family:'IM Fell English',serif;
+}
+.badge.done { border-color:var(--green); color:var(--green); }
+.badge.missed { border-color:var(--faded); color:var(--faded); }
+.badge.count { border-color:rgba(28,26,23,0.2); color:var(--ink-light); }
+
+.empty-records {
+  text-align:center; padding:48px 24px;
+  font-family:'Shippori Mincho',serif; font-size:13px;
+  color:var(--faded); letter-spacing:2px; line-height:2;
+}
+
+/* ===== SHARE MODAL ===== */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.6); z-index:100;
+  align-items:center; justify-content:center; padding:20px;
+}
+.modal-overlay.open { display:flex; animation:fadeIn 0.25s ease; }
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+.share-modal {
+  background:var(--cream); width:100%; max-width:380px;
+  padding:28px 24px;
+}
+.share-modal h3 {
+  font-family:'Shippori Mincho',serif; font-size:16px; color:var(--ink);
+  letter-spacing:4px; margin-bottom:6px;
+}
+.share-modal .share-sub { font-size:11px; color:var(--faded); letter-spacing:1px; margin-bottom:20px; }
+
+.share-preview {
+  background:var(--ink); padding:20px;
+  font-family:'Shippori Mincho',serif; color:var(--cream);
+  margin-bottom:20px; position:relative;
+}
+.share-preview .sp-label { font-size:8px; letter-spacing:3px; color:rgba(245,240,232,0.4); margin-bottom:12px; }
+.share-preview .sp-diagnosis { font-size:11px; color:rgba(181,56,42,0.8); letter-spacing:2px; margin-bottom:6px; }
+.share-preview .sp-drug { font-size:18px; font-weight:700; letter-spacing:3px; margin-bottom:10px; }
+.share-preview .sp-action { font-size:12px; color:rgba(245,240,232,0.8); line-height:1.6; padding:10px 0; border-top:1px solid rgba(245,240,232,0.1); }
+.share-preview .sp-tag { font-size:9px; letter-spacing:2px; color:rgba(245,240,232,0.3); margin-top:12px; }
+
+.share-options { display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:16px; }
+.btn-share-opt {
+  padding:12px 16px; background:var(--paper);
+  border:1px solid var(--line); cursor:pointer;
+  font-family:'Shippori Mincho',serif; font-size:12px; color:var(--ink);
+  letter-spacing:2px; text-align:left;
+  display:flex; align-items:center; gap:12px;
+  transition:all 0.15s;
+}
+.btn-share-opt:hover { background:var(--paper); border-color:rgba(28,26,23,0.3); }
+.btn-share-opt .opt-icon { font-size:18px; }
+
+.btn-close-modal {
+  width:100%; background:transparent; border:1.5px solid rgba(28,26,23,0.2);
+  padding:10px; font-family:'Shippori Mincho',serif; font-size:11px;
+  color:var(--faded); letter-spacing:3px; cursor:pointer;
+  transition:all 0.15s;
+}
+.btn-close-modal:hover { border-color:rgba(28,26,23,0.5); color:var(--ink); }
+
+/* ===== TOAST ===== */
+.toast {
+  position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--ink); color:var(--cream);
+  font-family:'Shippori Mincho',serif; font-size:12px; letter-spacing:2px;
+  padding:12px 24px; opacity:0; transition:all 0.3s; pointer-events:none; z-index:200;
+  white-space:nowrap;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ===== HISTORY MODAL ===== */
+.history-modal {
+  background:var(--cream); width:100%; max-width:460px;
+  max-height:88vh; overflow-y:auto; position:relative;
+}
+
+.history-modal .rx-topstrip { position:sticky; top:0; z-index:10; }
+
+.history-modal .hm-close {
+  position:absolute; top:12px; right:16px; z-index:20;
+  background:rgba(245,240,232,0.15); border:none;
+  color:var(--cream); font-size:18px; cursor:pointer;
+  width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  border-radius:50%; transition:background 0.15s;
+}
+.history-modal .hm-close:hover { background:rgba(245,240,232,0.25); }
+
+/* past check items — read-only with visual state */
+.check-item.past { cursor:default; pointer-events:none; }
+.check-item.past.done { background:var(--green-bg); border-color:rgba(45,106,79,0.3); }
+.check-item.past:not(.done) { opacity:0.55; }
+
+.record-item { cursor:pointer; transition:background 0.15s; border-radius:1px; }
+.record-item:hover { background:rgba(28,26,23,0.04); }
+.record-item .tap-hint {
+  font-size:8px; letter-spacing:1px; color:var(--faded);
+  font-family:'IM Fell English',serif; margin-top:4px;
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="clinic-name">Daily Prescription Clinic</div>
+  <h1>今日の処方箋</h1>
+</header>
+
+<nav class="nav-tabs">
+  <button class="nav-tab active" onclick="switchTab('today')">今日の処方</button>
+  <button class="nav-tab" onclick="switchTab('records')">記録帳</button>
+</nav>
+
+<!-- ===== TODAY TAB ===== -->
+<div id="todayTab" class="screen active">
+
+  <!-- INTAKE: 初回登録 -->
+  <div id="intakeScreen" class="screen active card intake-card">
+    <div class="corner-mark tl"></div>
+    <div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div>
+    <div class="corner-mark br"></div>
+
+    <div class="form-section">
+      <label class="form-label">お名前 <span class="req">*</span></label>
+      <input type="text" id="nameInput" class="form-input" placeholder="山田 太郎">
+    </div>
+    <div class="form-row">
+      <div class="form-section">
+        <label class="form-label">生年月日 <span class="req">*</span></label>
+        <input type="date" id="dobInput" class="form-input">
+      </div>
+      <div class="form-section">
+        <label class="form-label">血液型</label>
+        <select id="bloodInput" class="form-select">
+          <option value="">不明</option>
+          <option value="A">A型</option>
+          <option value="B">B型</option>
+          <option value="O">O型</option>
+          <option value="AB">AB型</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-section">
+      <label class="form-label">今日の体調</label>
+      <div class="mood-grid">
+        <button class="mood-btn" data-mood="exhausted" onclick="selectMood(this)"><span class="emoji">😩</span><span class="label">ぐったり</span></button>
+        <button class="mood-btn" data-mood="tired" onclick="selectMood(this)"><span class="emoji">😔</span><span class="label">つかれ気味</span></button>
+        <button class="mood-btn selected" data-mood="normal" onclick="selectMood(this)"><span class="emoji">😐</span><span class="label">ふつう</span></button>
+        <button class="mood-btn" data-mood="okay" onclick="selectMood(this)"><span class="emoji">🙂</span><span class="label">まあまあ</span></button>
+        <button class="mood-btn" data-mood="good" onclick="selectMood(this)"><span class="emoji">😊</span><span class="label">元気</span></button>
+      </div>
+    </div>
+    <div class="form-section">
+      <label class="form-label">最近の悩み・気になること</label>
+      <textarea id="worryInput" class="form-textarea" placeholder="仕事が忙しい、なんとなく気分が重い…など何でも"></textarea>
+    </div>
+    <button class="btn-primary" id="diagnoseBtn" onclick="startDiagnosis()">処方を受け取る</button>
+    <p class="note-text">入力情報はAIによる処方生成にのみ使用されます</p>
+  </div>
+
+  <!-- INTAKE: 毎日の問診（プロフィール保存済み） -->
+  <div id="dailyScreen" class="screen card intake-card">
+    <div class="corner-mark tl"></div>
+    <div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div>
+    <div class="corner-mark br"></div>
+
+    <!-- 保存済みプロフィール表示 -->
+    <div class="profile-bar">
+      <div class="profile-bar-info">
+        <span class="profile-name" id="profileName">—</span>
+        <span class="profile-sub" id="profileSub">—</span>
+      </div>
+      <button class="profile-edit-btn" onclick="editProfile()">変更</button>
+    </div>
+
+    <div class="form-section" style="margin-top:20px;">
+      <label class="form-label">今日の体調</label>
+      <div class="mood-grid">
+        <button class="mood-btn" data-mood="exhausted" onclick="selectMood(this)"><span class="emoji">😩</span><span class="label">ぐったり</span></button>
+        <button class="mood-btn" data-mood="tired" onclick="selectMood(this)"><span class="emoji">😔</span><span class="label">つかれ気味</span></button>
+        <button class="mood-btn selected" data-mood="normal" onclick="selectMood(this)"><span class="emoji">😐</span><span class="label">ふつう</span></button>
+        <button class="mood-btn" data-mood="okay" onclick="selectMood(this)"><span class="emoji">🙂</span><span class="label">まあまあ</span></button>
+        <button class="mood-btn" data-mood="good" onclick="selectMood(this)"><span class="emoji">😊</span><span class="label">元気</span></button>
+      </div>
+    </div>
+    <div class="form-section">
+      <label class="form-label">今日の悩み・気になること</label>
+      <textarea id="worryInputDaily" class="form-textarea" placeholder="今日ふと気になったこと、何でも"></textarea>
+    </div>
+    <button class="btn-primary" id="diagnoseBtnDaily" onclick="startDiagnosisDaily()">今日の処方を受け取る</button>
+    <p class="note-text">入力情報はAIによる処方生成にのみ使用されます</p>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loadingScreen" class="screen">
+    <div class="loading-mortar">⚗️</div>
+    <div class="loading-text">処方箋を調合中</div>
+    <div class="loading-sub">あなたの情報を分析しています</div>
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+  </div>
+
+  <!-- PRESCRIPTION -->
+  <div id="prescriptionScreen" class="screen">
+    <div class="card">
+      <div class="rx-topstrip">
+        <span class="facility">Daily Prescription Clinic</span>
+        <span class="rx-symbol">Rx</span>
+      </div>
+      <div class="rx-header">
+        <div class="rx-title">処　方　箋</div>
+        <div class="rx-meta">
+          <div class="rx-meta-item"><label>患者名</label><span class="value" id="rxPatient">—</span></div>
+          <div class="rx-meta-item"><label>発行日</label><span class="value" id="rxDate">—</span></div>
+          <div class="rx-meta-item"><label>処方番号</label><span class="value" id="rxNumber">—</span></div>
+          <div class="rx-meta-item"><label>有効期限</label><span class="value">本日中</span></div>
+        </div>
+      </div>
+      <div class="rx-diagnosis">
+        <label>DIAGNOSIS / 診断名</label>
+        <div class="diagnosis-text" id="rxDiagnosis">—</div>
+      </div>
+      <div class="rx-body">
+        <div class="rx-drug">
+          <div class="drug-number">No. 01 — 主薬</div>
+          <div class="drug-name" id="rxDrugName">—<span class="reading" id="rxDrugReading"></span></div>
+          <div class="drug-rows">
+            <div class="drug-row"><label>効能</label><span class="text" id="rxEffect">—</span></div>
+            <div class="drug-row"><label>用法</label><span class="text" id="rxUsage">—</span></div>
+            <div class="drug-row"><label>注意</label><span class="text" id="rxNote">—</span></div>
+          </div>
+        </div>
+
+        <!-- CHECK SECTION -->
+        <div class="rx-check">
+          <span class="rx-check-label">TODAY'S TASKS / 本日の処方タスク</span>
+          <div class="check-items" id="checkItems"></div>
+        </div>
+
+        <div class="rx-lucky">
+          <label>SUPPLEMENTARY / 補助薬</label>
+          <div class="lucky-grid">
+            <div class="lucky-item" id="luckyColorItem">
+            <span class="lucky-color-swatch" id="luckyColorSwatch"></span>
+            <span class="lucky-type">Lucky Color</span>
+            <span class="lucky-value" id="luckyColor">—</span>
+          </div>
+            <div class="lucky-item"><span class="lucky-icon">✨</span><span class="lucky-type">Lucky Item</span><span class="lucky-value" id="luckyItem">—</span></div>
+            <div class="lucky-item"><span class="lucky-icon">🔢</span><span class="lucky-type">Lucky Number</span><span class="lucky-value" id="luckyNumber">—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="rx-footer">
+        <div class="valid">この処方箋は本日のみ有効です</div>
+        <div class="rx-stamp"><span class="stamp-text">DAILY<br>CLINIC<br>認証済</span></div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn-share" onclick="openShare()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        シェアする
+      </button>
+      <button class="btn-secondary" onclick="newPrescription()">新しい処方</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== RECORDS TAB ===== -->
+<div id="recordsTab" class="screen">
+  <div class="card">
+    <div class="records-header">
+      <h2>記　録　帳</h2>
+      <div class="stats-row">
+        <div class="stat-box"><span class="stat-num" id="statTotal">0</span><span class="stat-label">Total Rx</span></div>
+        <div class="stat-box"><span class="stat-num" id="statDone">0</span><span class="stat-label">Completed</span></div>
+      </div>
+      <div class="streak-bar">
+        <span class="streak-text">🔥 連続達成</span>
+        <span class="streak-num"><span id="statStreak">0</span> 日</span>
+      </div>
+    </div>
+    <div class="records-list">
+      <h3>HISTORY / 処方履歴</h3>
+      <div id="recordsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHARE MODAL ===== -->
+<div class="modal-overlay" id="shareModal" onclick="closeShareOnBg(event)">
+  <div class="share-modal">
+    <h3>処方箋をシェア</h3>
+    <p class="share-sub">今日の処方を友人に届ける</p>
+    <div class="share-preview">
+      <div class="sp-label">TODAY'S PRESCRIPTION</div>
+      <div class="sp-diagnosis" id="sp-diagnosis">—</div>
+      <div class="sp-drug" id="sp-drug">—</div>
+      <div class="sp-action" id="sp-action">—</div>
+      <div class="sp-tag">#今日の処方箋 #DailyPrescription</div>
+    </div>
+    <div class="share-options">
+      <button class="btn-share-opt" onclick="copyToClipboard()">
+        <span class="opt-icon">📋</span>テキストをコピー
+      </button>
+      <button class="btn-share-opt" onclick="shareToTwitter()">
+        <span class="opt-icon">𝕏</span>X（Twitter）でシェア
+      </button>
+      <button class="btn-share-opt" onclick="shareNative()">
+        <span class="opt-icon">📤</span>その他のアプリでシェア
+      </button>
+    </div>
+    <button class="btn-close-modal" onclick="closeShare()">閉じる</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ===== HISTORY DETAIL MODAL ===== -->
+<div class="modal-overlay" id="historyModal" onclick="closeHistoryOnBg(event)">
+  <div class="history-modal card" id="historyModalInner">
+    <div class="rx-topstrip">
+      <span class="facility">Daily Prescription Clinic</span>
+      <span class="rx-symbol">Rx</span>
+      <button class="hm-close" onclick="closeHistory()">✕</button>
+    </div>
+    <div class="rx-header">
+      <div class="rx-title">処　方　箋</div>
+      <div class="rx-meta">
+        <div class="rx-meta-item"><label>患者名</label><span class="value" id="hm-patient">—</span></div>
+        <div class="rx-meta-item"><label>発行日</label><span class="value" id="hm-date">—</span></div>
+        <div class="rx-meta-item"><label>処方番号</label><span class="value" id="hm-number">—</span></div>
+        <div class="rx-meta-item"><label>状態</label><span class="value" id="hm-status">—</span></div>
+      </div>
+    </div>
+    <div class="rx-diagnosis">
+      <label>DIAGNOSIS / 診断名</label>
+      <div class="diagnosis-text" id="hm-diagnosis">—</div>
+    </div>
+    <div class="rx-body">
+      <div class="rx-drug">
+        <div class="drug-number">No. 01 — 主薬</div>
+        <div class="drug-name" id="hm-drugName">—<span class="reading" id="hm-drugReading"></span></div>
+        <div class="drug-rows">
+          <div class="drug-row"><label>効能</label><span class="text" id="hm-effect">—</span></div>
+          <div class="drug-row"><label>用法</label><span class="text" id="hm-usage">—</span></div>
+          <div class="drug-row"><label>注意</label><span class="text" id="hm-note">—</span></div>
+        </div>
+      </div>
+      <div class="rx-check">
+        <span class="rx-check-label">TASKS / 処方タスク（記録）</span>
+        <div class="check-items" id="hm-tasks"></div>
+      </div>
+      <div class="rx-lucky">
+        <label>SUPPLEMENTARY / 補助薬</label>
+        <div class="lucky-grid">
+          <div class="lucky-item" id="hm-colorItem">
+            <span class="lucky-color-swatch" id="hm-colorSwatch"></span>
+            <span class="lucky-type">Lucky Color</span>
+            <span class="lucky-value" id="hm-color">—</span>
+          </div>
+          <div class="lucky-item"><span class="lucky-icon">✨</span><span class="lucky-type">Lucky Item</span><span class="lucky-value" id="hm-item">—</span></div>
+          <div class="lucky-item"><span class="lucky-icon">🔢</span><span class="lucky-type">Lucky Number</span><span class="lucky-value" id="hm-number2">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="rx-footer">
+      <div class="valid" id="hm-valid">処方済み</div>
+      <div class="rx-stamp"><span class="stamp-text">DAILY<br>CLINIC<br>認証済</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+let currentRx = null;
+let selectedMood = 'normal';
+let records = [];
+
+// ===== COLOR RESOLVER =====
+const COLOR_MAP = {
+  '赤':'#C0392B','レッド':'#C0392B','深紅':'#8B0000','クリムゾン':'#DC143C',
+  'スカーレット':'#FF2400','バーミリオン':'#E34234','コーラル':'#FF6B6B',
+  'サーモン':'#FA8072','ローズ':'#FF007F','ピンク':'#FF69B4','ローズピンク':'#FF66B2',
+  'チェリー':'#DE3163','オレンジ':'#E67E22','テラコッタ':'#C04E27',
+  'テラコッタ色':'#C04E27','レンガ':'#B44626','バーントオレンジ':'#CC5500',
+  'マンダリン':'#F37A48','アンバー':'#FFBF00','パンプキン':'#FF7518',
+  '黄':'#F1C40F','イエロー':'#F1C40F','ゴールド':'#FFD700','レモン':'#FFF44F',
+  'サフラン':'#F4C430','マスタード':'#FFDB58','緑':'#27AE60','グリーン':'#27AE60',
+  'エメラルド':'#50C878','ミント':'#98FF98','オリーブ':'#808000','フォレスト':'#228B22',
+  'セージ':'#8A9A5B','ピスタチオ':'#93C572','モスグリーン':'#8A9A5B','ティール':'#008080',
+  '青':'#2980B9','ブルー':'#2980B9','ネイビー':'#001F5B','コバルト':'#0047AB',
+  'スカイブルー':'#87CEEB','セルリアン':'#007BA7','ミッドナイトブルー':'#191970',
+  'インディゴ':'#4B0082','デニム':'#1560BD','ラベンダーブルー':'#CCCCFF',
+  '紫':'#8E44AD','パープル':'#8E44AD','バイオレット':'#7F00FF','ラベンダー':'#B57EDC',
+  'ライラック':'#C8A2C8','モーブ':'#E0B0FF','プラム':'#8B0057','フューシャ':'#C154C1',
+  'マゼンタ':'#C154C1','茶':'#8B4513','ブラウン':'#8B4513','チョコレート':'#D2691E',
+  'カフェオレ':'#A07850','ベージュ':'#C9B99A','タン':'#D2B48C','キャラメル':'#C68642',
+  'モカ':'#967259','バーガンディ':'#800020','マロン':'#7B2D2D',
+  'グレー':'#7F8C8D','グレイ':'#7F8C8D','シルバー':'#A8A8A8','スレート':'#708090',
+  'チャコール':'#36454F','スモーク':'#848482','アッシュ':'#B2BEB5','パール':'#EAE0C8',
+  '白':'#F0EDE6','ホワイト':'#F0EDE6','クリーム':'#FFFDD0','アイボリー':'#FFFFF0',
+  '黒':'#1C1A17','ブラック':'#222','オフホワイト':'#FAF9F6',
+  'マリンブルー':'#01386A','オーシャン':'#0077BE','アクア':'#48C9B0','ターコイズ':'#40B2A8',
+  'マリゴールド':'#EAA221','サンセット':'#E8895C','ブロッサム':'#FFB7C5',
+  'ウォーターメロン':'#FC6C85','スレートグレー':'#708090','パウダーブルー':'#B0C4DE',
+};
+
+function resolveColor(name) {
+  if (!name) return '#C8B99A';
+  const trimmed = name.trim();
+  if (COLOR_MAP[trimmed]) return COLOR_MAP[trimmed];
+  for (const [k, v] of Object.entries(COLOR_MAP)) {
+    if (trimmed.includes(k)) return v;
+  }
+  return '#C8B99A';
+}
+
+function applyColorSwatch(swatchId, colorName) {
+  const el = document.getElementById(swatchId);
+  if (el) el.style.background = resolveColor(colorName);
+}
+
+
+// ===== STORAGE =====
+let userProfile = null; // { name, dob, blood }
+
+async function loadProfile() {
+  try {
+    const result = await window.storage.get('rx-profile');
+    if (result) userProfile = JSON.parse(result.value);
+  } catch(e) { userProfile = null; }
+}
+
+async function saveProfile(profile) {
+  userProfile = profile;
+  try {
+    await window.storage.set('rx-profile', JSON.stringify(profile));
+  } catch(e) { console.error('Profile save failed', e); }
+}
+async function loadRecords() {
+  try {
+    const result = await window.storage.get('rx-records');
+    if (result) records = JSON.parse(result.value);
+  } catch(e) { records = []; }
+}
+
+async function saveRecords() {
+  try {
+    await window.storage.set('rx-records', JSON.stringify(records));
+  } catch(e) { console.error('Save failed', e); }
+}
+
+// ===== TABS =====
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0 && tab==='today') || (i===1 && tab==='records'));
+  });
+  document.getElementById('todayTab').classList.toggle('active', tab==='today');
+  document.getElementById('recordsTab').classList.toggle('active', tab==='records');
+  if (tab==='records') renderRecords();
+}
+
+// ===== MOOD =====
+function selectMood(btn) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedMood = btn.dataset.mood;
+}
+
+// ===== SCREENS =====
+function showInnerScreen(id) {
+  ['intakeScreen','dailyScreen','loadingScreen','prescriptionScreen'].forEach(s => {
+    document.getElementById(s).classList.remove('active');
+  });
+  document.getElementById(id).classList.add('active');
+}
+
+// ===== HELPERS =====
+function formatDate(d) {
+  const days = ['日','月','火','水','木','金','土'];
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`;
+}
+
+function getZodiac(dob) {
+  if (!dob) return null;
+  const signs = [
+    {name:'山羊座',end:[1,19]},{name:'水瓶座',end:[2,18]},{name:'魚座',end:[3,20]},
+    {name:'牡羊座',end:[4,19]},{name:'牡牛座',end:[5,20]},{name:'双子座',end:[6,20]},
+    {name:'蟹座',end:[7,22]},{name:'獅子座',end:[8,22]},{name:'乙女座',end:[9,22]},
+    {name:'天秤座',end:[10,22]},{name:'蠍座',end:[11,21]},{name:'射手座',end:[12,31]},
+  ];
+  const d = new Date(dob), m = d.getMonth()+1, day = d.getDate();
+  for (const s of signs) {
+    if (m < s.end[0] || (m===s.end[0] && day<=s.end[1])) return s.name;
+  }
+  return '山羊座';
+}
+
+function moodLabel(m) {
+  return {exhausted:'ぐったり',tired:'つかれ気味',normal:'ふつう',okay:'まあまあ',good:'元気'}[m]||'ふつう';
+}
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ===== DIAGNOSIS =====
+async function startDiagnosis() {
+  const name  = document.getElementById('nameInput').value.trim();
+  const dob   = document.getElementById('dobInput').value;
+  const blood = document.getElementById('bloodInput').value;
+  const worry = document.getElementById('worryInput').value.trim();
+  if (!name) { showToast('お名前を入力してください'); return; }
+
+  document.getElementById('diagnoseBtn').disabled = true;
+  // プロフィールを保存
+  await saveProfile({ name, dob, blood });
+  await runDiagnosis(name, dob, blood, worry);
+  document.getElementById('diagnoseBtn').disabled = false;
+}
+
+async function runDiagnosis(name, dob, blood, worry) {
+  showInnerScreen('loadingScreen');
+  const today  = new Date();
+  const zodiac = getZodiac(dob) || '不明';
+
+  const prompt = `あなたは「今日の処方箋クリニック」の処方医です。
+患者情報を基に、その人の一日を少し豊かにする処方箋を生成してください。
+
+患者情報:
+- 名前: ${name}
+- 星座: ${zodiac}
+- 血液型: ${blood || '不明'}
+- 今日の体調: ${moodLabel(selectedMood)}
+- 悩み・気になること: ${worry || '特になし'}
+- 今日: ${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日 (${['日','月','火','水','木','金','土'][today.getDay()]}曜日)
+- 季節: ${['冬','冬','春','春','春','初夏','夏','夏','秋','秋','秋','冬'][today.getMonth()]}
+
+以下のJSON形式のみ返してください（説明文・\`\`\`不要）:
+{
+  "diagnosis": "診断名（詩的で面白い名前、例：慢性思考過負荷症候群）",
+  "drugName": "薬の名前（漢字や造語で詩的に）",
+  "drugReading": "薬名のよみがな",
+  "effect": "この薬の効能（1〜2文）",
+  "usage": "用法・用量（具体的に）",
+  "sideNote": "注意事項（ユーモアを含む1文）",
+  "tasks": [
+    {
+      "title": "今日やること1（一番大事なメインタスク、具体的で短く）",
+      "why": "なぜこれが処方されたのか（心理学・行動科学の観点から1文。「なんで？」と思わせる内容）"
+    },
+    {
+      "title": "今日やること2（補助的なタスク）",
+      "why": "なぜこれが処方されたのか（1文）"
+    },
+    {
+      "title": "今日やること3（ラッキーアクション的な軽いもの）",
+      "why": "なぜこれが処方されたのか（1文）"
+    }
+  ],
+  "luckyColor": "ラッキーカラー（色名のみ）",
+  "luckyItem": "ラッキーアイテム（短く）",
+  "luckyNumber": "ラッキーナンバー（数字のみ）"
+}`;
+
+  try {
+    const res = await fetch("/api/prescription", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:1200,
+        messages:[{role:"user",content:prompt}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.map(i=>i.text||'').join('') || '';
+    const rx = JSON.parse(text.replace(/```json|```/g,'').trim());
+
+    currentRx = {
+      id: todayKey(),
+      date: today.toISOString(),
+      name,
+      diagnosis: rx.diagnosis,
+      drugName: rx.drugName,
+      drugReading: rx.drugReading,
+      effect: rx.effect,
+      usage: rx.usage,
+      sideNote: rx.sideNote,
+      tasks: rx.tasks,
+      luckyColor: rx.luckyColor,
+      luckyItem: rx.luckyItem,
+      luckyNumber: rx.luckyNumber,
+      doneMap: {}
+    };
+
+    // save to records (replace today's if exists)
+    records = records.filter(r => r.id !== currentRx.id);
+    records.unshift(currentRx);
+    await saveRecords();
+
+    renderPrescription();
+    showInnerScreen('prescriptionScreen');
+
+  } catch(e) {
+    console.error(e);
+    showToast('処方箋の生成に失敗しました。もう一度お試しください');
+    showInnerScreen('intakeScreen');
+  }
+
+  document.getElementById('diagnoseBtn').disabled = false;
+}
+
+function renderPrescription() {
+  if (!currentRx) return;
+  const rx = currentRx;
+  const today = new Date();
+
+  document.getElementById('rxPatient').textContent = rx.name + ' 様';
+  document.getElementById('rxDate').textContent = formatDate(today);
+  document.getElementById('rxNumber').textContent = 'RX-' + rx.id.replace(/-/g,'').slice(2) + '-' + String(Math.floor(Math.random()*9000)+1000);
+  document.getElementById('rxDiagnosis').textContent = rx.diagnosis;
+  document.getElementById('rxDrugName').childNodes[0].textContent = rx.drugName;
+  document.getElementById('rxDrugReading').textContent = rx.drugReading;
+  document.getElementById('rxEffect').textContent = rx.effect;
+  document.getElementById('rxUsage').textContent = rx.usage;
+  document.getElementById('rxNote').textContent = rx.sideNote;
+  document.getElementById('luckyColor').textContent = rx.luckyColor;
+  applyColorSwatch('luckyColorSwatch', rx.luckyColor);
+  document.getElementById('luckyItem').textContent = rx.luckyItem;
+  document.getElementById('luckyNumber').textContent = rx.luckyNumber;
+
+  // render tasks
+  const container = document.getElementById('checkItems');
+  container.innerHTML = '';
+  rx.tasks.forEach((task, i) => {
+    const isDone = rx.doneMap[i];
+    const div = document.createElement('div');
+    div.className = 'check-item' + (isDone ? ' done' : '');
+    div.onclick = () => toggleTask(i, div);
+    div.innerHTML = `
+      <div class="check-box">
+        <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+          <path d="M1 4L4 7.5L10 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="check-content">
+        <div class="check-title">${task.title}</div>
+        <div class="check-why">${task.why}</div>
+      </div>
+      <div class="check-done-stamp">達成</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function toggleTask(i, el) {
+  if (!currentRx) return;
+  currentRx.doneMap[i] = !currentRx.doneMap[i];
+  el.classList.toggle('done', currentRx.doneMap[i]);
+
+  // sync to records
+  const idx = records.findIndex(r => r.id === currentRx.id);
+  if (idx !== -1) records[idx].doneMap = currentRx.doneMap;
+  await saveRecords();
+
+  if (currentRx.doneMap[i]) showToast('達成！お疲れ様でした 🎉');
+}
+
+function newPrescription() {
+  currentRx = null;
+  if (userProfile) {
+    showDailyScreen();
+  } else {
+    showInnerScreen('intakeScreen');
+  }
+  document.getElementById('diagnoseBtn').disabled = false;
+  document.getElementById('diagnoseBtnDaily').disabled = false;
+}
+
+function showDailyScreen() {
+  if (!userProfile) return;
+  const zodiac = getZodiac(userProfile.dob) || '—';
+  const blood = userProfile.blood ? userProfile.blood + '型' : '血液型不明';
+  document.getElementById('profileName').textContent = userProfile.name + ' 様';
+  document.getElementById('profileSub').textContent = `${zodiac} · ${blood}`;
+  // reset mood to normal
+  document.querySelectorAll('#dailyScreen .mood-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.mood === 'normal');
+  });
+  selectedMood = 'normal';
+  document.getElementById('worryInputDaily').value = '';
+  showInnerScreen('dailyScreen');
+}
+
+function editProfile() {
+  // プロフィール編集：初回フォームに現在値を入れて表示
+  if (userProfile) {
+    document.getElementById('nameInput').value = userProfile.name || '';
+    document.getElementById('dobInput').value  = userProfile.dob  || '';
+    document.getElementById('bloodInput').value = userProfile.blood || '';
+  }
+  showInnerScreen('intakeScreen');
+}
+
+async function startDiagnosisDaily() {
+  if (!userProfile) { showInnerScreen('intakeScreen'); return; }
+  document.getElementById('diagnoseBtnDaily').disabled = true;
+  const worry = document.getElementById('worryInputDaily').value.trim();
+  await runDiagnosis(userProfile.name, userProfile.dob, userProfile.blood, worry);
+  document.getElementById('diagnoseBtnDaily').disabled = false;
+}
+
+// ===== RECORDS =====
+function renderRecords() {
+  const total = records.length;
+  const done = records.filter(r => {
+    const tasks = r.tasks || [];
+    return tasks.length > 0 && tasks.every((_, i) => r.doneMap?.[i]);
+  }).length;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDone').textContent = done;
+
+  // streak
+  let streak = 0;
+  const sorted = [...records].sort((a,b) => new Date(b.date)-new Date(a.date));
+  let prev = new Date(); prev.setHours(0,0,0,0);
+  for (const r of sorted) {
+    const d = new Date(r.date); d.setHours(0,0,0,0);
+    const diff = Math.round((prev - d) / 86400000);
+    const allDone = r.tasks?.length > 0 && r.tasks.every((_,i) => r.doneMap?.[i]);
+    if (diff <= 1 && allDone) { streak++; prev = d; }
+    else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  // list
+  const list = document.getElementById('recordsList');
+  if (records.length === 0) {
+    list.innerHTML = '<div class="empty-records">まだ処方履歴がありません<br>最初の処方を受け取りましょう</div>';
+    return;
+  }
+  list.innerHTML = sorted.map(r => {
+    const d = new Date(r.date);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const tasks = r.tasks || [];
+    const doneCount = tasks.filter((_,i) => r.doneMap?.[i]).length;
+    const allDone = doneCount === tasks.length && tasks.length > 0;
+    return `
+      <div class="record-item" onclick="openHistory('${r.id}')">
+        <div class="record-date-col">
+          <span class="month">${months[d.getMonth()]}</span>
+          <span class="day">${d.getDate()}</span>
+        </div>
+        <div class="record-content">
+          <div class="record-diagnosis">${r.diagnosis}</div>
+          <div class="record-action">${r.drugName}</div>
+          <div class="record-badges">
+            ${allDone ? '<span class="badge done">全達成</span>' : doneCount > 0 ? `<span class="badge done">${doneCount}/${tasks.length} 達成</span>` : '<span class="badge missed">未達成</span>'}
+            <span class="badge count">${tasks.length} タスク</span>
+          </div>
+          <div class="tap-hint">タップして処方箋を見る →</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== HISTORY MODAL =====
+function openHistory(id) {
+  const r = records.find(rec => rec.id === id);
+  if (!r) return;
+
+  const d = new Date(r.date);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const days = ['日','月','火','水','木','金','土'];
+  const tasks = r.tasks || [];
+  const doneCount = tasks.filter((_,i) => r.doneMap?.[i]).length;
+  const allDone = doneCount === tasks.length && tasks.length > 0;
+
+  document.getElementById('hm-patient').textContent = r.name + ' 様';
+  document.getElementById('hm-date').textContent = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`;
+  document.getElementById('hm-number').textContent = 'RX-' + r.id.replace(/-/g,'').slice(2);
+  document.getElementById('hm-status').textContent = allDone ? '✓ 全達成' : doneCount > 0 ? `${doneCount}/${tasks.length} 達成` : '未達成';
+  document.getElementById('hm-diagnosis').textContent = r.diagnosis;
+  document.getElementById('hm-drugName').childNodes[0].textContent = r.drugName;
+  document.getElementById('hm-drugReading').textContent = r.drugReading || '';
+  document.getElementById('hm-effect').textContent = r.effect;
+  document.getElementById('hm-usage').textContent = r.usage;
+  document.getElementById('hm-note').textContent = r.sideNote;
+  document.getElementById('hm-color').textContent = r.luckyColor;
+  applyColorSwatch('hm-colorSwatch', r.luckyColor);
+  document.getElementById('hm-item').textContent = r.luckyItem;
+  document.getElementById('hm-number2').textContent = r.luckyNumber;
+  document.getElementById('hm-valid').textContent = `${d.getMonth()+1}月${d.getDate()}日の処方`;
+
+  // render past tasks (read-only)
+  const container = document.getElementById('hm-tasks');
+  container.innerHTML = tasks.map((task, i) => {
+    const done = r.doneMap?.[i];
+    return `
+      <div class="check-item past ${done ? 'done' : ''}">
+        <div class="check-box">
+          <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+            <path d="M1 4L4 7.5L10 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="check-content">
+          <div class="check-title">${task.title}</div>
+          <div class="check-why">${task.why}</div>
+        </div>
+        <div class="check-done-stamp">達成</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('historyModal').classList.add('open');
+  document.getElementById('historyModalInner').scrollTop = 0;
+}
+
+function closeHistory() { document.getElementById('historyModal').classList.remove('open'); }
+function closeHistoryOnBg(e) { if (e.target === e.currentTarget) closeHistory(); }
+
+// ===== SHARE =====
+function openShare() {
+  if (!currentRx) return;
+  document.getElementById('sp-diagnosis').textContent = currentRx.diagnosis;
+  document.getElementById('sp-drug').textContent = currentRx.drugName;
+  document.getElementById('sp-action').textContent = currentRx.tasks?.map((t,i)=>`${i+1}. ${t.title}`).join('\n') || '';
+  document.getElementById('shareModal').classList.add('open');
+}
+
+function closeShare() { document.getElementById('shareModal').classList.remove('open'); }
+function closeShareOnBg(e) { if (e.target === e.currentTarget) closeShare(); }
+
+function buildShareText() {
+  if (!currentRx) return '';
+  const tasks = currentRx.tasks?.map((t,i) => `${i+1}. ${t.title}`).join('\n') || '';
+  return `🏥 今日の処方箋\n\n【診断】${currentRx.diagnosis}\n【処方薬】${currentRx.drugName}\n\n📋 本日のタスク\n${tasks}\n\n#今日の処方箋 #DailyPrescription`;
+}
+
+function copyToClipboard() {
+  navigator.clipboard.writeText(buildShareText())
+    .then(() => { showToast('コピーしました！'); closeShare(); })
+    .catch(() => showToast('コピーに失敗しました'));
+}
+
+function shareToTwitter() {
+  const text = encodeURIComponent(buildShareText());
+  window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+  closeShare();
+}
+
+function shareNative() {
+  if (navigator.share) {
+    navigator.share({ title:'今日の処方箋', text: buildShareText() })
+      .then(() => closeShare())
+      .catch(() => {});
+  } else {
+    copyToClipboard();
+  }
+}
+
+// ===== INIT =====
+document.getElementById('dobInput').max = new Date().toISOString().split('T')[0];
+
+(async () => {
+  await loadRecords();
+  await loadProfile();
+
+  // 今日すでに処方済みなら処方箋を表示
+  const todayRecord = records.find(r => r.id === todayKey());
+  if (todayRecord) {
+    currentRx = todayRecord;
+    renderPrescription();
+    showInnerScreen('prescriptionScreen');
+    return;
+  }
+
+  // プロフィール保存済みなら毎日の問診画面へ
+  if (userProfile) {
+    showDailyScreen();
+  }
+  // なければ初回フォーム（デフォルトで表示済み）
+})();
+</script>
+</body>
+</html>
